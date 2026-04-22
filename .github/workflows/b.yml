@@ -226,7 +226,6 @@ jobs:
             "$PublishPath/$pluginName.pdb",
             "$PublishPath/$pluginName.dll",
             "$PublishPath/$pluginName.deps.json",
-            "$PublishPath/$pluginName.runtimeconfig.json",
             "$PublishPath/Lyricify Lite - README.md",
             "$PublishPath/README-1.md",
             "$PublishPath/README-2.md",
@@ -234,13 +233,12 @@ jobs:
             "$PublishPath/jinyongshubiao.bat",
             "$PublishPath/black.html",
             "$PublishPath/huifu.bat",
-            "$PublishPath/$pluginName.pdb",
             "$PublishPath/huifu.ps1",
             "$PublishPath/icon-1.png",
-            "$PublishPath/$pluginName.dll",
             "$PublishPath/README.md",
             "$PublishPath/manifest.yml",
-            "$PublishPath/icon.png"
+            "$PublishPath/icon.png",
+            "$PublishPath/version.json"
           )
           
           # 移除重复项并过滤不存在的文件

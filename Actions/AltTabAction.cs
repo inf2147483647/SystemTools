@@ -13,9 +13,6 @@ public class AltTabAction(ILogger<AltTabAction> logger) : ActionBase
 {
     private readonly ILogger<AltTabAction> _logger = logger;
 
-    //[DllImport("user32.dll", SetLastError = true)]
-    //private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-
     private const byte VK_MENU = 0x12; // Alt 键
     private const byte VK_TAB = 0x09; // Tab 键
 

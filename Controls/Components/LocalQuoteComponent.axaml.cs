@@ -35,6 +35,7 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
     private readonly List<string> _quotes = [];
     private readonly Animation _swapOutAnimation;
     private readonly Animation _swapInAnimation;
+    private readonly Random _random = new();
     private int _currentIndex = -1;
     private string _loadedPath = string.Empty;
     private bool _isAnimating;
@@ -172,6 +173,12 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         if (e.PropertyName == nameof(Settings.QuotesFilePath))
         {
             LoadQuotesFromFile(Settings.QuotesFilePath, showFirstQuote: true);
+            EnsureTimersForQuoteState();
+        }
+
+        if (e.PropertyName == nameof(Settings.PlaybackOrder))
+        {
+            ShowNextQuote();
             EnsureTimersForQuoteState();
         }
     }
@@ -323,7 +330,9 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         // 因此需要在当前轮换开始时立即重置，而不是等动画播放完成后再重置。
         RestartProgressCycle(_carouselTimer.Interval.TotalSeconds);
 
-        _currentIndex = (_currentIndex + 1) % _quotes.Count;
+        _currentIndex = Settings.PlaybackOrder == LocalQuotePlaybackOrder.Random
+            ? _random.Next(_quotes.Count)
+            : (_currentIndex + 1) % _quotes.Count;
         var next = _quotes[_currentIndex];
 
         // 更新持久化数据

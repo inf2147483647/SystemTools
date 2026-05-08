@@ -9,6 +9,7 @@ namespace SystemTools.Controls.Components;
 public partial class LocalQuoteSettingsControl : ComponentBase<LocalQuoteSettings>
 {
     public Array ProgressBarPositions { get; } = Enum.GetValues(typeof(LocalQuoteProgressBarPosition));
+    public Array PlaybackOrders { get; } = Enum.GetValues(typeof(LocalQuotePlaybackOrder));
 
     public LocalQuoteSettingsControl()
     {

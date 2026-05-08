@@ -12,6 +12,14 @@ public enum LocalQuoteProgressBarPosition
     Top = 1
 }
 
+public enum LocalQuotePlaybackOrder
+{
+    [Description("逐行播放")]
+    Sequential = 0,
+    [Description("随机播放")]
+    Random = 1
+}
+
 public partial class LocalQuoteSettings : ObservableObject
 {
     [ObservableProperty]
@@ -37,4 +45,7 @@ public partial class LocalQuoteSettings : ObservableObject
 
     [ObservableProperty]
     private LocalQuoteProgressBarPosition _progressBarPosition = LocalQuoteProgressBarPosition.Bottom;
+
+    [ObservableProperty]
+    private LocalQuotePlaybackOrder _playbackOrder = LocalQuotePlaybackOrder.Sequential;
 }

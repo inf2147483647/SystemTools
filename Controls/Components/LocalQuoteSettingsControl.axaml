@@ -55,6 +55,22 @@
                                        Value="{Binding Settings.CarouselIntervalSeconds, Mode=TwoWay}" />
                     </controls:SettingsExpander.Footer>
                 </controls:SettingsExpander>
+
+                <controls:SettingsExpander
+                    Header="轮播顺序"
+                    Description="设置一言文本的轮播方式"
+                    IconSource="{ci:FluentIconSource &#xE143;}">
+                    <controls:SettingsExpander.Footer>
+                        <ComboBox SelectedItem="{Binding Settings.PlaybackOrder, Mode=TwoWay}"
+                                  ItemsSource="{Binding PlaybackOrders}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource EnumDescriptionConverter}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </controls:SettingsExpander.Footer>
+                </controls:SettingsExpander>
                 
                 <controls:SettingsExpander
                     Header="记忆轮播行"

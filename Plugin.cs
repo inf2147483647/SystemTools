@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
 using SystemTools.Actions;
 using SystemTools.ConfigHandlers;
 using SystemTools.Controls;
@@ -144,6 +145,7 @@ public class Plugin : PluginBase
                 _logger?.LogWarning("[SystemTools]人脸识别功能已自动关闭：缺少 runtimes、Models 或 OpenCvSharp/Dlib 依赖，并已清理对应验证器配置。");
             }
             _logger?.LogInformation("[SystemTools]SystemTools 启动完成");
+            RegisterOrUpdateFloatingWindowTrayMenu();
         };
 
         // ========== 注册实验性功能 ==========
@@ -900,6 +902,91 @@ public class Plugin : PluginBase
             IAppHost.GetService<FloatingWindowService>().Stop();
         }
         _logger?.LogInformation("[SystemTools]关闭插件SystemTools，保存配置...");
+        UnregisterFloatingWindowTrayMenu();
         GlobalConstants.MainConfig?.Save();
+    }
+
+    private void RegisterOrUpdateFloatingWindowTrayMenu()
+    {
+        var config = GlobalConstants.MainConfig?.Data;
+        if (config == null)
+        {
+            return;
+        }
+
+        if (_toggleFloatingWindowMenuItem == null)
+        {
+            _toggleFloatingWindowMenuItem = new NativeMenuItem();
+            _toggleFloatingWindowMenuItem.Click += (_, _) =>
+            {
+                var data = GlobalConstants.MainConfig?.Data;
+                if (data == null || !data.EnableFloatingWindowFeature)
+                {
+                    return;
+                }
+
+                data.ShowFloatingWindow = !data.ShowFloatingWindow;
+                IAppHost.GetService<FloatingWindowService>().UpdateWindowState();
+                UpdateFloatingWindowTrayMenuHeader();
+                GlobalConstants.MainConfig?.Save();
+            };
+
+            config.PropertyChanged += OnMainConfigDataPropertyChanged;
+        }
+
+        if (!config.EnableFloatingWindowFeature)
+        {
+            UnregisterFloatingWindowTrayMenu();
+            return;
+        }
+
+        var trayService = IAppHost.TryGetService<ITaskBarIconService>();
+        if (trayService == null)
+        {
+            return;
+        }
+
+        if (!trayService.MoreOptionsMenuItems.Contains(_toggleFloatingWindowMenuItem))
+        {
+            trayService.MoreOptionsMenuItems.Add(_toggleFloatingWindowMenuItem);
+        }
+
+        UpdateFloatingWindowTrayMenuHeader();
+    }
+
+    private void UnregisterFloatingWindowTrayMenu()
+    {
+        var trayService = IAppHost.TryGetService<ITaskBarIconService>();
+        if (trayService == null || _toggleFloatingWindowMenuItem == null)
+        {
+            return;
+        }
+
+        if (trayService.MoreOptionsMenuItems.Contains(_toggleFloatingWindowMenuItem))
+        {
+            trayService.MoreOptionsMenuItems.Remove(_toggleFloatingWindowMenuItem);
+        }
+    }
+
+    private void OnMainConfigDataPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(MainConfigData.ShowFloatingWindow) or nameof(MainConfigData.EnableFloatingWindowFeature)))
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(RegisterOrUpdateFloatingWindowTrayMenu);
+    }
+
+    private void UpdateFloatingWindowTrayMenuHeader()
+    {
+        if (_toggleFloatingWindowMenuItem == null)
+        {
+            return;
+        }
+
+        _toggleFloatingWindowMenuItem.Header = GlobalConstants.MainConfig?.Data.ShowFloatingWindow == true
+            ? "隐藏悬浮窗"
+            : "显示悬浮窗";
     }
 }

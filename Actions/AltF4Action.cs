@@ -13,9 +13,6 @@ public class AltF4Action(ILogger<AltF4Action> logger) : ActionBase
 {
     private readonly ILogger<AltF4Action> _logger = logger;
 
-    //[DllImport("user32.dll", SetLastError = true)]
-    //private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-
     private const byte VK_MENU = 0x12; // Alt 键
     private const byte VK_F4 = 0x73; // F4 键
 

@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using ClassIsland.Core.Abstractions.Controls;
+using ClassIsland.Core.Abstractions.Services;
 using ClassIsland.Core.Attributes;
 using System;
 using System.Collections.Generic;
@@ -30,10 +31,11 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
     private const double SwapMotionOffset = 20;
 
     private readonly DispatcherTimer _carouselTimer;
-    private readonly DispatcherTimer _progressTimer;
+    private readonly ILessonsService _lessonsService;
     private readonly List<string> _quotes = [];
     private readonly Animation _swapOutAnimation;
     private readonly Animation _swapInAnimation;
+    private readonly Random _random = new();
     private int _currentIndex = -1;
     private string _loadedPath = string.Empty;
     private bool _isAnimating;
@@ -68,14 +70,13 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
     }
 
-    public LocalQuoteComponent()
+    public LocalQuoteComponent(ILessonsService lessonsService)
     {
+        _lessonsService = lessonsService;
         InitializeComponent();
 
         _carouselTimer = new DispatcherTimer();
         _carouselTimer.Tick += OnCarouselTicked;
-        _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
-        _progressTimer.Tick += (_, _) => UpdateProgressState();
 
         _swapOutAnimation = new Animation
         {
@@ -137,6 +138,7 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
     private void LocalQuoteComponent_OnLoaded(object? sender, RoutedEventArgs e)
     {
         Settings.PropertyChanged += OnSettingsPropertyChanged;
+        _lessonsService.PreMainTimerTicked += LessonsServiceOnPreMainTimerTicked;
         
         // 1. 先加载文件数据
         LoadQuotesFromFile(Settings.QuotesFilePath, showFirstQuote: false);
@@ -148,8 +150,8 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
     private void LocalQuoteComponent_OnUnloaded(object? sender, RoutedEventArgs e)
     {
         Settings.PropertyChanged -= OnSettingsPropertyChanged;
+        _lessonsService.PreMainTimerTicked -= LessonsServiceOnPreMainTimerTicked;
         _carouselTimer.Stop();
-        _progressTimer.Stop();
     }
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -171,6 +173,12 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         if (e.PropertyName == nameof(Settings.QuotesFilePath))
         {
             LoadQuotesFromFile(Settings.QuotesFilePath, showFirstQuote: true);
+            EnsureTimersForQuoteState();
+        }
+
+        if (e.PropertyName == nameof(Settings.PlaybackOrder))
+        {
+            ShowNextQuote();
             EnsureTimersForQuoteState();
         }
     }
@@ -224,7 +232,6 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         _carouselTimer.Interval = TimeSpan.FromSeconds(initialDelay);
         RestartProgressCycle(initialDelay);
         _carouselTimer.Start();
-        _progressTimer.Start();
     }
 
     private void OnCarouselTicked(object? sender, EventArgs e)
@@ -266,7 +273,6 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         if (string.IsNullOrWhiteSpace(path))
         {
             _carouselTimer.Stop();
-            _progressTimer.Stop();
             CurrentQuote = "（请先在组件设置中选择 txt 文件）";
             return;
         }
@@ -274,7 +280,6 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         if (!File.Exists(path))
         {
             _carouselTimer.Stop();
-            _progressTimer.Stop();
             CurrentQuote = "（txt 文件不存在）";
             return;
         }
@@ -298,7 +303,6 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
             if (_quotes.Count == 0)
             {
                 _carouselTimer.Stop();
-                _progressTimer.Stop();
                 CurrentQuote = "（文件中没有可显示内容）";
                 return;
             }
@@ -311,7 +315,6 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         catch
         {
             _carouselTimer.Stop();
-            _progressTimer.Stop();
             CurrentQuote = "（读取 txt 文件失败）";
         }
     }
@@ -327,7 +330,9 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         // 因此需要在当前轮换开始时立即重置，而不是等动画播放完成后再重置。
         RestartProgressCycle(_carouselTimer.Interval.TotalSeconds);
 
-        _currentIndex = (_currentIndex + 1) % _quotes.Count;
+        _currentIndex = Settings.PlaybackOrder == LocalQuotePlaybackOrder.Random
+            ? _random.Next(_quotes.Count)
+            : (_currentIndex + 1) % _quotes.Count;
         var next = _quotes[_currentIndex];
 
         // 更新持久化数据
@@ -412,7 +417,6 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
         if (_quotes.Count == 0)
         {
             _carouselTimer.Stop();
-            _progressTimer.Stop();
             return;
         }
 
@@ -424,9 +428,10 @@ public partial class LocalQuoteComponent : ComponentBase<LocalQuoteSettings>, IN
             _carouselTimer.Start();
         }
 
-        if (!_progressTimer.IsEnabled)
-        {
-            _progressTimer.Start();
-        }
+    }
+
+    private void LessonsServiceOnPreMainTimerTicked(object? sender, EventArgs e)
+    {
+        UpdateProgressState();
     }
 }

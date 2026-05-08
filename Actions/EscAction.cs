@@ -13,9 +13,6 @@ public class EscAction(ILogger<EscAction> logger) : ActionBase
 {
     private readonly ILogger<EscAction> _logger = logger;
 
-    //[DllImport("user32.dll", SetLastError = true)]
-    //private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-
     private const byte VK_ESCAPE = 0x1B;
 
     protected override async Task OnInvoke()

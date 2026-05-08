@@ -13,11 +13,6 @@ public class EnterKeyAction(ILogger<EnterKeyAction> logger) : ActionBase
 {
     private readonly ILogger<EnterKeyAction> _logger = logger;
 
-    // Windows API 导入
-    //[DllImport("user32.dll", SetLastError = true)]
-    //private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-
-    // 常量定义
     private const byte VK_RETURN = 0x0D; // Enter 键的虚拟键码
 
     protected override async Task OnInvoke()

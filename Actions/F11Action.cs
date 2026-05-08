@@ -13,9 +13,6 @@ public class F11Action(ILogger<F11Action> logger) : ActionBase
 {
     private readonly ILogger<F11Action> _logger = logger;
 
-    //[DllImport("user32.dll", SetLastError = true)]
-    //private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-
     private const byte VK_F11 = 0x7A;
 
     protected override async Task OnInvoke()

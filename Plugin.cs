@@ -1,32 +1,38 @@
-﻿using AvaloniaEdit.Utils;
+﻿using Avalonia.Controls;
+using Avalonia.Threading;
+using AvaloniaEdit.Utils;
 using ClassIsland.Core;
 using ClassIsland.Core.Abstractions;
 using ClassIsland.Core.Abstractions.Services;
+using ClassIsland.Core.Assists;
 using ClassIsland.Core.Attributes;
 using ClassIsland.Core.Controls;
 using ClassIsland.Core.Extensions.Registry;
-using ClassIsland.Core.Services.Registry;
-using ClassIsland.Shared;
 using ClassIsland.Core.Helpers;
 using ClassIsland.Core.Models.Automation;
+using ClassIsland.Core.Services.Registry;
+using ClassIsland.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using SystemTools.Actions;
-using SystemTools.Models.ComponentSettings;
 using SystemTools.ConfigHandlers;
 using SystemTools.Controls;
 using SystemTools.Controls.Components;
+using SystemTools.Models.ComponentSettings;
 using SystemTools.Rules;
 using SystemTools.Services;
 using SystemTools.Settings;
 using SystemTools.Shared;
 using SystemTools.Triggers;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.InteropServices;
+using Windows.Media.Control;
+using WinMedia = Windows.Media.Control;
+
 
 namespace SystemTools;
 /*
@@ -40,6 +46,8 @@ namespace SystemTools;
 public class Plugin : PluginBase
 {
     private ILogger<Plugin>? _logger;
+    private NativeMenuItem? _toggleFloatingWindowMenuItem;
+    private int _toggleMenuRegisterRetryCount;
     private bool _faceRecognitionRegistered = false;
     private bool _ffmpegDisabledDueToMissingDependency;
     private bool _faceRecognitionDisabledDueToMissingDependency;
@@ -218,6 +226,7 @@ public class Plugin : PluginBase
         RegisterActionIfEnabled<EnterKeyAction>(services, config, "SystemTools.EnterKey");
         RegisterActionIfEnabled<EscAction>(services, config, "SystemTools.EscKey");
         RegisterActionIfEnabled<AltF4Action>(services, config, "SystemTools.AltF4");
+        RegisterActionIfEnabled<CtrlZAction>(services, config, "SystemTools.CtrlZ");
         RegisterActionIfEnabled<AltTabAction>(services, config, "SystemTools.AltTab");
         RegisterActionIfEnabled<F11Action>(services, config, "SystemTools.F11Key");
 
@@ -265,6 +274,7 @@ public class Plugin : PluginBase
         // 媒体工具
         RegisterActionIfEnabled<BackgroundPlayAudioAction, BackgroundPlayAudioSettingsControl>(services, config,
             "SystemTools.BackgroundPlayAudio");
+        RegisterActionIfEnabled<ShowDesktopAction>(services, config, "SystemTools.ShowDesktop");
 
         // 悬浮窗设置
         if (config.EnableFloatingWindowFeature)
@@ -282,6 +292,9 @@ public class Plugin : PluginBase
             "SystemTools.TriggerCustomTrigger");
         RegisterActionIfEnabled<RestartAsAdminAction>(services, config, "SystemTools.RestartAsAdmin");
         RegisterActionIfEnabled<ClearAllNotificationsAction>(services, config, "SystemTools.ClearAllNotifications");
+        RegisterActionIfEnabled<OpenAppSettingsAction>(services, config, "SystemTools.OpenAppSettings");
+        RegisterActionIfEnabled<OpenProfileEditorAction>(services, config, "SystemTools.OpenProfileEditor");
+        RegisterActionIfEnabled<OpenClassSwapWindowAction>(services, config, "SystemTools.OpenClassSwapWindow");
     }
 
     private void RegisterBaseTriggers(IServiceCollection services)
@@ -328,6 +341,12 @@ public class Plugin : PluginBase
         {
             services.AddRule<InTimePeriodRuleSettings, InTimePeriodRuleSettingsControl>(
                 "SystemTools.InTimePeriodRule", "是否在某时间段", "\uE4CA", HandleInTimePeriodRule);
+        }
+
+        if (config.IsRuleEnabled("SystemTools.MediaMusicPlayingRule"))
+        {
+            services.AddRule<MediaMusicPlayingRuleSettings, MediaMusicPlayingRuleSettingsControl>(
+                "SystemTools.MediaMusicPlayingRule", "正在播放媒体音乐", "\uEDBF", HandleMediaMusicPlayingRule);
         }
     }
 
@@ -441,7 +460,7 @@ public class Plugin : PluginBase
         // 模拟操作
         if (HasAnyActionEnabled(config, "SystemTools.SimulateKeyboard", "SystemTools.SimulateMouse",
                 "SystemTools.TypeContent", "SystemTools.WindowOperation", "SystemTools.EnterKey",
-                "SystemTools.EscKey", "SystemTools.AltF4", "SystemTools.AltTab", "SystemTools.F11Key"))
+                "SystemTools.EscKey", "SystemTools.AltF4", "SystemTools.AltTab", "SystemTools.CtrlZ", "SystemTools.F11Key"))
         {
             IActionService.ActionMenuTree["SystemTools 行动"].Add(new ActionMenuTreeGroup("模拟操作…", "\uEA0B"));
             BuildSimulationMenu(config);
@@ -477,20 +496,22 @@ public class Plugin : PluginBase
         }
 
         // 实用工具
-        if (config.EnableFfmpegFeatures || HasAnyActionEnabled(config, "SystemTools.ScreenShot", "SystemTools.SetVolume", "SystemTools.KillProcess",
+        if (config.EnableFfmpegFeatures || HasAnyActionEnabled(config, "SystemTools.ScreenShot", "SystemTools.KillProcess",
                 "SystemTools.EnableDevice", "SystemTools.DisableDevice", "SystemTools.ShowToast"))
         {
             IActionService.ActionMenuTree["SystemTools 行动"].Add(new ActionMenuTreeGroup("实用工具…", "\uE352"));
             BuildUtilityMenu(config);
         }
 
-        if (config.EnableFfmpegFeatures || HasAnyActionEnabled(config, "SystemTools.BackgroundPlayAudio"))
+        if (config.EnableFfmpegFeatures || HasAnyActionEnabled(config, "SystemTools.BackgroundPlayAudio", "SystemTools.SetVolume", "SystemTools.ShowDesktop"))
         {
             IActionService.ActionMenuTree["SystemTools 行动"].Add(new ActionMenuTreeGroup("媒体工具…", "\uE342"));
             BuildMediaToolsMenu(config);
         }
 
-        if (HasAnyActionEnabled(config, "SystemTools.ClearAllNotifications", "SystemTools.RestartAsAdmin", "SystemTools.LoadTemporaryClassPlan"))
+        if (HasAnyActionEnabled(config, "SystemTools.ClearAllNotifications", "SystemTools.RestartAsAdmin",
+                "SystemTools.LoadTemporaryClassPlan", "SystemTools.OpenAppSettings",
+                "SystemTools.OpenProfileEditor", "SystemTools.OpenClassSwapWindow"))
         {
             IActionService.ActionMenuTree["SystemTools 行动"].Add(new ActionMenuTreeGroup("ClassIsland…", "\uE5CB"));
             BuildClassIslandMenu(config);
@@ -602,6 +623,38 @@ public class Plugin : PluginBase
         return current >= start || current <= end;
     }
 
+    private static bool HandleMediaMusicPlayingRule(object? settings)
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17134))
+        {
+            return false;
+        }
+
+        try
+        {
+            var manager = WinMedia.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()
+                .AsTask().GetAwaiter().GetResult();
+
+            if (manager == null)
+                return false;
+
+            var sessions = manager.GetSessions();
+            if (sessions == null || sessions.Count == 0)
+                return false;
+
+            return sessions.Any(session =>
+            {
+                var playbackInfo = session.GetPlaybackInfo();
+                return playbackInfo != null &&
+                       playbackInfo.PlaybackStatus == WinMedia.GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+            });
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void BuildSimulationMenu(MainConfigData config)
     {
         var items = new List<ActionMenuTreeItem>();
@@ -626,6 +679,8 @@ public class Plugin : PluginBase
             commonKeys.Add(new ActionMenuTreeItem("SystemTools.AltF4", "按下 Alt+F4", "\uEA0B"));
         if (config.IsActionEnabled("SystemTools.AltTab"))
             commonKeys.Add(new ActionMenuTreeItem("SystemTools.AltTab", "按下 Alt+Tab", "\uEA0B"));
+        if (config.IsActionEnabled("SystemTools.CtrlZ"))
+            commonKeys.Add(new ActionMenuTreeItem("SystemTools.CtrlZ", "按下 Ctrl+Z", "\uEA0B"));
         if (config.IsActionEnabled("SystemTools.EnterKey"))
             commonKeys.Add(new ActionMenuTreeItem("SystemTools.EnterKey", "按下 Enter 键", "\uEA0B"));
         if (config.IsActionEnabled("SystemTools.EscKey"))
@@ -726,8 +781,6 @@ public class Plugin : PluginBase
             items.Add(new ActionMenuTreeItem("SystemTools.KillProcess", "退出进程", "\uE0DE"));
         if (config.IsActionEnabled("SystemTools.ScreenShot"))
             items.Add(new ActionMenuTreeItem("SystemTools.ScreenShot", "屏幕截图", "\uEEE7"));
-        if (config.IsActionEnabled("SystemTools.SetVolume"))
-            items.Add(new ActionMenuTreeItem("SystemTools.SetVolume", "设置系统音量", "\uF013"));
         if (config.IsActionEnabled("SystemTools.ShowToast"))
             items.Add(new ActionMenuTreeItem("SystemTools.ShowToast", "拉起自定义Windows通知", "\uE3E4"));
         if (config.IsActionEnabled("SystemTools.DisableDevice"))
@@ -746,6 +799,10 @@ public class Plugin : PluginBase
         var items = new List<ActionMenuTreeItem>();
         if (config.IsActionEnabled("SystemTools.BackgroundPlayAudio"))
             items.Add(new ActionMenuTreeItem("SystemTools.BackgroundPlayAudio", "后台播放音频", "\uEBCC"));
+        if (config.IsActionEnabled("SystemTools.SetVolume"))
+            items.Add(new ActionMenuTreeItem("SystemTools.SetVolume", "设置系统音量", "\uF013"));
+        if (config.IsActionEnabled("SystemTools.ShowDesktop"))
+            items.Add(new ActionMenuTreeItem("SystemTools.ShowDesktop", "显示桌面", "\uE62F"));
 
         if (items.Count > 0)
         {
@@ -786,6 +843,12 @@ public class Plugin : PluginBase
             items.Add(new ActionMenuTreeItem("SystemTools.RestartAsAdmin", "重启应用为管理员身份", "\uEF53"));
         if (config.IsActionEnabled("SystemTools.LoadTemporaryClassPlan"))
             items.Add(new ActionMenuTreeItem("SystemTools.LoadTemporaryClassPlan", "加载临时课表", "\uE6A1"));
+        if (config.IsActionEnabled("SystemTools.OpenAppSettings"))
+            items.Add(new ActionMenuTreeItem("SystemTools.OpenAppSettings", "打开应用设置", "\uEF27"));
+        if (config.IsActionEnabled("SystemTools.OpenProfileEditor"))
+            items.Add(new ActionMenuTreeItem("SystemTools.OpenProfileEditor", "打开档案编辑", "\uE699"));
+        if (config.IsActionEnabled("SystemTools.OpenClassSwapWindow"))
+            items.Add(new ActionMenuTreeItem("SystemTools.OpenClassSwapWindow", "打开换课窗口", "\uE13B"));
 
         if (items.Count > 0)
         {

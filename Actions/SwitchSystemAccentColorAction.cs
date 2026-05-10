@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using System;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using SystemTools.Settings;
 
@@ -14,6 +15,13 @@ public class SwitchSystemAccentColorAction(ILogger<SwitchSystemAccentColorAction
 {
     private readonly ILogger<SwitchSystemAccentColorAction> _logger = logger;
 
+    [DllImport("user32.dll", SetLastError = true)]
+    static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+
+    const uint HWND_BROADCAST = 0xFFFF;
+    const uint WM_SETTINGCHANGE = 0x001A;
+    const uint SMTO_ABORTIFHUNG = 0x0002;
+
     protected override async Task OnInvoke()
     {
         if (Settings == null || string.IsNullOrWhiteSpace(Settings.ColorHex)) return;
@@ -21,14 +29,22 @@ public class SwitchSystemAccentColorAction(ILogger<SwitchSystemAccentColorAction
         try
         {
             var color = ParseColor(Settings.ColorHex);
-            var dword = ((uint)color.A << 24) | ((uint)color.R << 16) | ((uint)color.G << 8) | color.B;
+            // Windows 使用 ABGR 格式（低位字节是 R）
+            var dword = ((uint)color.A << 24) | ((uint)color.B << 16) | ((uint)color.G << 8) | color.R;
+            // ColorizationColor 通常使用 C4 (196) 作为 Alpha
+            var colorizationDword = (0xC4u << 24) | ((uint)color.B << 16) | ((uint)color.G << 8) | color.R;
 
             using var dwmKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\DWM");
             dwmKey?.SetValue("AccentColor", dword, RegistryValueKind.DWord);
+            dwmKey?.SetValue("ColorizationColor", colorizationDword, RegistryValueKind.DWord);
+            dwmKey?.SetValue("ColorizationAfterglow", colorizationDword, RegistryValueKind.DWord);
             dwmKey?.SetValue("ColorPrevalence", 1, RegistryValueKind.DWord);
 
             using var explorerKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent");
             explorerKey?.SetValue("AccentColorMenu", dword, RegistryValueKind.DWord);
+
+            // 通知 Windows 刷新主题色
+            SendMessageTimeout((IntPtr)HWND_BROADCAST, WM_SETTINGCHANGE, (UIntPtr)0, "ImmersiveColorSet", SMTO_ABORTIFHUNG, 5000, out _);
 
             _logger.LogInformation("系统强调色已切换为 {Color}", Settings.ColorHex);
         }

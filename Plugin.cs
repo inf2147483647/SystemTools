@@ -492,7 +492,7 @@ public class Plugin : PluginBase
         }
 
         // 系统个性化
-        if (HasAnyActionEnabled(config, "SystemTools.ChangeWallpaper", "SystemTools.SwitchTheme"))
+        if (HasAnyActionEnabled(config, "SystemTools.ChangeWallpaper", "SystemTools.SwitchTheme", "SystemTools.SwitchSystemAccentColor"))
         {
             IActionService.ActionMenuTree["SystemTools 行动"].Add(new ActionMenuTreeGroup("系统个性化…", "\uF42F"));
             BuildPersonalizationMenu(config);

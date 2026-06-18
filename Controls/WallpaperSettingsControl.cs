@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Platform.Storage;
 using ClassIsland.Core.Abstractions.Controls;
@@ -14,6 +14,7 @@ public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWa
 {
     private Avalonia.Controls.TextBox _pathBox;
     private Avalonia.Controls.Button _browseButton;
+    private Avalonia.Controls.ComboBox _fitComboBox;
 
     public ChangeWallpaperSettingsControl()
     {
@@ -42,6 +43,26 @@ public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWa
         _browseButton.Click += async (sender, e) => await BrowseButton_Click();
         panel.Children.Add(_browseButton);
 
+        // 新增：契合度下拉
+        panel.Children.Add(new Avalonia.Controls.TextBlock
+        {
+            Text = "壁纸契合度:",
+            FontWeight = Avalonia.Media.FontWeight.Bold,
+            Margin = new Avalonia.Thickness(0, 8, 0, 0)
+        });
+
+        _fitComboBox = new Avalonia.Controls.ComboBox
+        {
+            Items = new[] { "平铺", "居中", "拉伸", "填充", "适应", "跨区" },
+            Width = 200
+        };
+        _fitComboBox.SelectionChanged += (s, e) =>
+        {
+            if (_fitComboBox.SelectedIndex >= 0)
+                Settings.FitStyle = _fitComboBox.SelectedIndex;
+        };
+        panel.Children.Add(_fitComboBox);
+
         Content = panel;
     }
 
@@ -49,6 +70,7 @@ public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWa
     {
         base.OnInitialized();
         _pathBox.Text = Settings.ImagePath;
+        _fitComboBox.SelectedIndex = Settings.FitStyle;
     }
 
     private async Task BrowseButton_Click()
@@ -70,7 +92,7 @@ public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWa
                 {
                     new FilePickerFileType("图片文件")
                     {
-                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.bmp" }
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.tiff", "*.webp" }
                     },
                     new FilePickerFileType("所有文件")
                     {

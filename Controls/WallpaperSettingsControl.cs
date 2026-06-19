@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Data;
 using Avalonia.Platform.Storage;
 using ClassIsland.Core.Abstractions.Controls;
 using ClassIsland.Shared;
@@ -12,9 +11,14 @@ namespace SystemTools.Controls;
 
 public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWallpaperSettings>
 {
+    private Avalonia.Controls.ComboBox _modeComboBox;
+    private Avalonia.Controls.TextBlock _pathLabel;
     private Avalonia.Controls.TextBox _pathBox;
     private Avalonia.Controls.Button _browseButton;
+    private Avalonia.Controls.TextBlock _fitLabel;
     private Avalonia.Controls.ComboBox _fitComboBox;
+    private Avalonia.Controls.TextBlock _solidColorLabel;
+    private Avalonia.Controls.TextBox _solidColorBox;
 
     public ChangeWallpaperSettingsControl()
     {
@@ -22,9 +26,31 @@ public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWa
 
         panel.Children.Add(new Avalonia.Controls.TextBlock
         {
-            Text = "图片路径:",
+            Text = "壁纸类型:",
             FontWeight = Avalonia.Media.FontWeight.Bold
         });
+
+        _modeComboBox = new Avalonia.Controls.ComboBox
+        {
+            ItemsSource = new[] { "图片壁纸", "纯色壁纸" },
+            Width = 200
+        };
+        _modeComboBox.SelectionChanged += (s, e) =>
+        {
+            if (_modeComboBox.SelectedIndex >= 0)
+            {
+                Settings.Mode = (ChangeWallpaperMode)_modeComboBox.SelectedIndex;
+                RefreshModeVisibility();
+            }
+        };
+        panel.Children.Add(_modeComboBox);
+
+        _pathLabel = new Avalonia.Controls.TextBlock
+        {
+            Text = "图片路径:",
+            FontWeight = Avalonia.Media.FontWeight.Bold
+        };
+        panel.Children.Add(_pathLabel);
 
         _pathBox = new Avalonia.Controls.TextBox
         {
@@ -44,12 +70,13 @@ public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWa
         panel.Children.Add(_browseButton);
 
         // 新增：契合度下拉
-        panel.Children.Add(new Avalonia.Controls.TextBlock
+        _fitLabel = new Avalonia.Controls.TextBlock
         {
             Text = "壁纸契合度:",
             FontWeight = Avalonia.Media.FontWeight.Bold,
             Margin = new Avalonia.Thickness(0, 8, 0, 0)
-        });
+        };
+        panel.Children.Add(_fitLabel);
 
         _fitComboBox = new Avalonia.Controls.ComboBox
         {
@@ -63,14 +90,46 @@ public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWa
         };
         panel.Children.Add(_fitComboBox);
 
+        _solidColorLabel = new Avalonia.Controls.TextBlock
+        {
+            Text = "纯色颜色:",
+            FontWeight = Avalonia.Media.FontWeight.Bold,
+            Margin = new Avalonia.Thickness(0, 8, 0, 0)
+        };
+        panel.Children.Add(_solidColorLabel);
+
+        _solidColorBox = new Avalonia.Controls.TextBox
+        {
+            Watermark = "#000000 或 0,0,0",
+            Width = 200,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
+        };
+        _solidColorBox.TextChanged += (s, e) => { Settings.SolidColor = _solidColorBox.Text ?? "#000000"; };
+        panel.Children.Add(_solidColorBox);
+
         Content = panel;
     }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        _modeComboBox.SelectedIndex = (int)Settings.Mode;
         _pathBox.Text = Settings.ImagePath;
         _fitComboBox.SelectedIndex = Settings.FitStyle;
+        _solidColorBox.Text = Settings.SolidColor;
+        RefreshModeVisibility();
+    }
+
+    private void RefreshModeVisibility()
+    {
+        var isImageMode = Settings.Mode == ChangeWallpaperMode.Image;
+        _pathLabel.IsVisible = isImageMode;
+        _pathBox.IsVisible = isImageMode;
+        _browseButton.IsVisible = isImageMode;
+        _fitLabel.IsVisible = isImageMode;
+        _fitComboBox.IsVisible = isImageMode;
+        _solidColorLabel.IsVisible = !isImageMode;
+        _solidColorBox.IsVisible = !isImageMode;
     }
 
     private async Task BrowseButton_Click()

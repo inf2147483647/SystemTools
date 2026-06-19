@@ -110,8 +110,8 @@ public class SimulateKeyboardSettingsControl : ActionSettingsControlBase<Keyboar
         _startButton.IsVisible = false;
         _stopButton.IsVisible = true;
         _hookProc = HookCallback;
-        _hookId = PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_KEYBOARD_LL, _hookProc,
-            PInvoke.GetModuleHandle(Process.GetCurrentProcess().MainModule?.ModuleName), 0);
+        _hookId = (HHOOK)PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_KEYBOARD_LL, _hookProc,
+            PInvoke.GetModuleHandle(Process.GetCurrentProcess().MainModule?.ModuleName), 0).DangerousGetHandle();
     }
 
     private void StopRecording()

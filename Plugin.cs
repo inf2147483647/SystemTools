@@ -1,4 +1,4 @@
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Threading;
 using AvaloniaEdit.Utils;
 using ClassIsland.Core;
@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.ComponentModel;
 using SystemTools.Actions;
 using SystemTools.ConfigHandlers;
 using SystemTools.Controls;
@@ -31,8 +30,6 @@ using SystemTools.Services;
 using SystemTools.Settings;
 using SystemTools.Shared;
 using SystemTools.Triggers;
-using Windows.Media.Control;
-using WinMedia = Windows.Media.Control;
 
 
 namespace SystemTools;
@@ -44,7 +41,7 @@ namespace SystemTools;
          /_______  // ____|/____  > |__|   \___  >|__|_|  /|____|  \____/  \____/ |____//____  >
                 \/ \/          \/             \/       \/                                   \/
 */
-public class Plugin : PluginBase
+public partial class Plugin : PluginBase
 {
     private ILogger<Plugin>? _logger;
     private NativeMenuItem? _toggleFloatingWindowMenuItem;
@@ -554,121 +551,6 @@ public class Plugin : PluginBase
     private bool HasAnyActionEnabled(MainConfigData config, params string[] actionIds)
     {
         return actionIds.Any(id => config.IsActionEnabled(id));
-    }
-
-    private static bool HandleProcessRunningRule(object? settings)
-    {
-        if (settings is not ProcessRunningRuleSettings ruleSettings ||
-            string.IsNullOrWhiteSpace(ruleSettings.ProcessName))
-        {
-            return false;
-        }
-
-        var processName = ruleSettings.ProcessName.Trim();
-        if (processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-        {
-            processName = processName[..^4];
-        }
-
-        try
-        {
-            return System.Diagnostics.Process.GetProcessesByName(processName).Length > 0;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static bool HandleUsingClassPlanRule(object? settings)
-    {
-        if (settings is not UsingClassPlanRuleSettings ruleSettings ||
-            !Guid.TryParse(ruleSettings.ClassPlanId, out var classPlanId))
-        {
-            return false;
-        }
-
-        var profile = IAppHost.TryGetService<IProfileService>()?.Profile;
-        if (profile == null || !profile.ClassPlans.TryGetValue(classPlanId, out var classPlan))
-        {
-            return false;
-        }
-
-        return classPlan.IsActivated;
-    }
-
-    private static bool HandleUsingTimeLayoutRule(object? settings)
-    {
-        if (settings is not UsingTimeLayoutRuleSettings ruleSettings ||
-            !Guid.TryParse(ruleSettings.TimeLayoutId, out var timeLayoutId))
-        {
-            return false;
-        }
-
-        var profile = IAppHost.TryGetService<IProfileService>()?.Profile;
-        if (profile == null || !profile.TimeLayouts.TryGetValue(timeLayoutId, out var timeLayout))
-        {
-            return false;
-        }
-
-        return timeLayout.IsActivated;
-    }
-
-    private static bool HandleInTimePeriodRule(object? settings)
-    {
-        if (settings is not InTimePeriodRuleSettings ruleSettings ||
-            !TimeSpan.TryParse(ruleSettings.StartTime, out var start) ||
-            !TimeSpan.TryParse(ruleSettings.EndTime, out var end))
-        {
-            return false;
-        }
-
-        var current = IAppHost.TryGetService<IExactTimeService>()?.GetCurrentLocalDateTime().TimeOfDay ?? DateTime.Now.TimeOfDay;
-        if (start <= end)
-        {
-            return current >= start && current <= end;
-        }
-
-        return current >= start || current <= end;
-    }
-
-    private static DateTime _lastMediaRuleCheckAt = DateTime.MinValue;
-    private static bool _lastMediaRuleResult;
-
-    private static bool HandleMediaMusicPlayingRule(object? settings)
-    {
-        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17134))
-        {
-            return false;
-        }
-
-        var now = DateTime.UtcNow;
-        if (now - _lastMediaRuleCheckAt < TimeSpan.FromMilliseconds(800))
-        {
-            return _lastMediaRuleResult;
-        }
-
-        try
-        {
-            var manager = WinMedia.GlobalSystemMediaTransportControlsSessionManager.RequestAsync()
-                .AsTask().GetAwaiter().GetResult();
-
-            var sessions = manager?.GetSessions();
-            var isPlaying = sessions != null && sessions.Any(session =>
-            {
-                var playbackInfo = session.GetPlaybackInfo();
-                return playbackInfo?.PlaybackStatus == WinMedia.GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
-            });
-
-            _lastMediaRuleResult = isPlaying;
-            _lastMediaRuleCheckAt = now;
-            return isPlaying;
-        }
-        catch
-        {
-            _lastMediaRuleCheckAt = now;
-            return _lastMediaRuleResult;
-        }
     }
 
     private void BuildSimulationMenu(MainConfigData config)

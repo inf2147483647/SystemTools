@@ -3,6 +3,7 @@ using ClassIsland.Core.Attributes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -10,7 +11,7 @@ using SystemTools.Settings;
 
 namespace SystemTools.Actions;
 
-[ActionInfo("SystemTools.SwitchSystemAccentColor", "切换系统强调色", "\uE790", false)]
+[ActionInfo("SystemTools.SwitchSystemAccentColor", "切换系统强调色", "\uE523", false)]
 public class SwitchSystemAccentColorAction(ILogger<SwitchSystemAccentColorAction> logger) : ActionBase<AccentColorSettings>
 {
     private readonly ILogger<SwitchSystemAccentColorAction> _logger = logger;
@@ -29,21 +30,20 @@ public class SwitchSystemAccentColorAction(ILogger<SwitchSystemAccentColorAction
         try
         {
             var color = ParseColor(Settings.ColorHex);
-            // Windows 使用 ABGR 格式（低位字节是 R）
             var dword = ((uint)color.A << 24) | ((uint)color.B << 16) | ((uint)color.G << 8) | color.R;
-            // ColorizationColor 通常使用 C4 (196) 作为 Alpha
             var colorizationDword = (0xC4u << 24) | ((uint)color.B << 16) | ((uint)color.G << 8) | color.R;
 
             using var dwmKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\DWM");
-            dwmKey?.SetValue("AccentColor", dword, RegistryValueKind.DWord);
-            dwmKey?.SetValue("ColorizationColor", colorizationDword, RegistryValueKind.DWord);
-            dwmKey?.SetValue("ColorizationAfterglow", colorizationDword, RegistryValueKind.DWord);
+            dwmKey?.SetValue("AccentColor", unchecked((int)dword), RegistryValueKind.DWord);
+            dwmKey?.SetValue("ColorizationColor", unchecked((int)colorizationDword), RegistryValueKind.DWord);
+            dwmKey?.SetValue("ColorizationAfterglow", unchecked((int)colorizationDword), RegistryValueKind.DWord);
             dwmKey?.SetValue("ColorPrevalence", 1, RegistryValueKind.DWord);
 
             using var explorerKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent");
-            explorerKey?.SetValue("AccentColorMenu", dword, RegistryValueKind.DWord);
+            explorerKey?.SetValue("AccentColorMenu", unchecked((int)dword), RegistryValueKind.DWord);
+            explorerKey?.SetValue("StartColorMenu", unchecked((int)dword), RegistryValueKind.DWord);
+            explorerKey?.SetValue("AccentPalette", BuildAccentPalette(color.R, color.G, color.B), RegistryValueKind.Binary);
 
-            // 通知 Windows 刷新主题色
             SendMessageTimeout((IntPtr)HWND_BROADCAST, WM_SETTINGCHANGE, (UIntPtr)0, "ImmersiveColorSet", SMTO_ABORTIFHUNG, 5000, out _);
 
             _logger.LogInformation("系统强调色已切换为 {Color}", Settings.ColorHex);
@@ -65,5 +65,39 @@ public class SwitchSystemAccentColorAction(ILogger<SwitchSystemAccentColorAction
 
         var value = uint.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
         return ((byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value);
+    }
+
+    private static byte[] BuildAccentPalette(byte r, byte g, byte b)
+    {
+        var colors = new List<(byte R, byte G, byte B)>
+        {
+            Scale(r, g, b, 0.60),
+            Scale(r, g, b, 0.75),
+            Scale(r, g, b, 0.90),
+            (r, g, b),
+            Scale(r, g, b, 1.10),
+            Scale(r, g, b, 1.25),
+            Scale(r, g, b, 1.40),
+            Scale(r, g, b, 1.55)
+        };
+
+        var palette = new byte[32];
+        for (var i = 0; i < colors.Count; i++)
+        {
+            var c = colors[i];
+            var p = i * 4;
+            palette[p] = c.R;
+            palette[p + 1] = c.G;
+            palette[p + 2] = c.B;
+            palette[p + 3] = 0xFF;
+        }
+
+        return palette;
+    }
+
+    private static (byte R, byte G, byte B) Scale(byte r, byte g, byte b, double factor)
+    {
+        static byte ClampToByte(double v) => (byte)Math.Clamp((int)Math.Round(v), 0, 255);
+        return (ClampToByte(r * factor), ClampToByte(g * factor), ClampToByte(b * factor));
     }
 }

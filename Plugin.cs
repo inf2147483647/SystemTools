@@ -214,6 +214,7 @@ public class Plugin : PluginBase
 
     private void RegisterBaseActions(IServiceCollection services)
     {
+        
         var config = GlobalConstants.MainConfig!.Data;
 
         // 模拟操作

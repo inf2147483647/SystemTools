@@ -21,17 +21,17 @@ public class AdjustScreenBrightnessSettingsControl : ActionSettingsControlBase<A
 
         _brightnessInput = new NumericUpDown
         {
-            Minimum = 1,
+            Minimum = 0,
             Maximum = 100,
             Increment = 1,
             FormatString = "0",
-            Watermark = "输入 1-100 的整数"
+            Watermark = "输入 0-100 的整数"
         };
         panel.Children.Add(_brightnessInput);
 
         panel.Children.Add(new TextBlock
         {
-            Text = "1 = 最暗, 100 = 最亮",
+            Text = "0 = 最暗, 100 = 最亮",
             Foreground = Avalonia.Media.Brushes.Gray,
             FontSize = 12,
             Margin = new(0, 5, 0, 0)
@@ -39,7 +39,7 @@ public class AdjustScreenBrightnessSettingsControl : ActionSettingsControlBase<A
 
         panel.Children.Add(new TextBlock
         {
-            Text = "注意: 此功能使用 WMI 调用，需要显示器支持亮度调整。在某些设备上可能无效。",
+            Text = "注意: 此功能使用 WMI 调用，需要显示器支持亮度调整。台式机外接显示器通常不支持此功能。在某些设备上可能需要管理员权限。",
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             Foreground = Avalonia.Media.Brushes.Gray,
             FontSize = 11,

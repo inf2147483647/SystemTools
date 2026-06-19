@@ -506,7 +506,9 @@ public class FloatingWindowService
 
     private List<List<FloatingWindowEntry>> GetOrderedRows()
     {
-        var values = _entries.Values.ToDictionary(x => x.ButtonId, x => x);
+        var values = _entries.Values
+            .GroupBy(x => x.ButtonId)
+            .ToDictionary(x => x.Key, x => x.First());
         var order = _configHandler.Data.FloatingWindowButtonOrder ?? [];
 
         var orderedIds = values.Keys

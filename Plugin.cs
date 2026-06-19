@@ -240,6 +240,8 @@ public class Plugin : PluginBase
         RegisterActionIfEnabled<InternalDisplayAction>(services, config, "SystemTools.InternalDisplay");
         RegisterActionIfEnabled<ExternalDisplayAction>(services, config, "SystemTools.ExternalDisplay");
         RegisterActionIfEnabled<BlackScreenHtmlAction>(services, config, "SystemTools.BlackScreenHtml");
+        RegisterActionIfEnabled<ShowDesktopAction>(services, config, "SystemTools.ShowDesktop");
+        RegisterActionIfEnabled<AdjustScreenBrightnessAction, AdjustScreenBrightnessSettingsControl>(services, config, "SystemTools.AdjustScreenBrightness");
 
         // 电源选项
         RegisterActionIfEnabled<ShutdownAction, ShutdownSettingsControl>(services, config, "SystemTools.Shutdown");
@@ -279,7 +281,6 @@ public class Plugin : PluginBase
         // 媒体工具
         RegisterActionIfEnabled<BackgroundPlayAudioAction, BackgroundPlayAudioSettingsControl>(services, config,
             "SystemTools.BackgroundPlayAudio");
-        RegisterActionIfEnabled<ShowDesktopAction>(services, config, "SystemTools.ShowDesktop");
 
         // 悬浮窗设置
         if (config.EnableFloatingWindowFeature)
@@ -723,6 +724,10 @@ public class Plugin : PluginBase
             items.Add(new ActionMenuTreeItem("SystemTools.ExternalDisplay", "仅第二屏幕", "\uE641"));
         if (config.IsActionEnabled("SystemTools.BlackScreenHtml"))
             items.Add(new ActionMenuTreeItem("SystemTools.BlackScreenHtml", "黑屏html", "\uE643"));
+        if (config.IsActionEnabled("SystemTools.ShowDesktop"))
+            items.Add(new ActionMenuTreeItem("SystemTools.ShowDesktop", "显示桌面", "\uE62F"));
+        if (config.IsActionEnabled("SystemTools.AdjustScreenBrightness"))
+            items.Add(new ActionMenuTreeItem("SystemTools.AdjustScreenBrightness", "调整屏幕亮度", "\uF464"));
 
         if (items.Count > 0)
         {
@@ -817,8 +822,6 @@ public class Plugin : PluginBase
             items.Add(new ActionMenuTreeItem("SystemTools.BackgroundPlayAudio", "后台播放音频", "\uEBCC"));
         if (config.IsActionEnabled("SystemTools.SetVolume"))
             items.Add(new ActionMenuTreeItem("SystemTools.SetVolume", "设置系统音量", "\uF013"));
-        if (config.IsActionEnabled("SystemTools.ShowDesktop"))
-            items.Add(new ActionMenuTreeItem("SystemTools.ShowDesktop", "显示桌面", "\uE62F"));
 
         if (items.Count > 0)
         {

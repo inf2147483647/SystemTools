@@ -263,7 +263,10 @@ public partial class SystemToolsSettingsViewModel : ObservableObject, IDisposabl
 
     public void RefreshFloatingTriggers()
     {
-        var entries = _floatingWindowService.Entries.ToDictionary(x => x.ButtonId, x => x);
+        _floatingWindowService.EnsureUniqueButtonIds();
+        var entries = _floatingWindowService.Entries
+            .GroupBy(x => x.ButtonId)
+            .ToDictionary(x => x.Key, x => x.First());
         HasFloatingTriggerEntries = entries.Count > 0;
 
         if (!HasFloatingTriggerEntries && Settings.ShowFloatingWindow)

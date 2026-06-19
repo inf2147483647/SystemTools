@@ -11,7 +11,7 @@ using SystemTools.Settings;
 
 namespace SystemTools.Actions;
 
-[ActionInfo("SystemTools.SwitchSystemAccentColor", "切换系统强调色", "\uE790", false)]
+[ActionInfo("SystemTools.SwitchSystemAccentColor", "切换系统强调色", "\uE523", false)]
 public class SwitchSystemAccentColorAction(ILogger<SwitchSystemAccentColorAction> logger) : ActionBase<AccentColorSettings>
 {
     private readonly ILogger<SwitchSystemAccentColorAction> _logger = logger;
@@ -30,9 +30,7 @@ public class SwitchSystemAccentColorAction(ILogger<SwitchSystemAccentColorAction
         try
         {
             var color = ParseColor(Settings.ColorHex);
-            // Windows 使用 ABGR 格式（低位字节是 R）
             var dword = ((uint)color.A << 24) | ((uint)color.B << 16) | ((uint)color.G << 8) | color.R;
-            // ColorizationColor 通常使用 C4 (196) 作为 Alpha
             var colorizationDword = (0xC4u << 24) | ((uint)color.B << 16) | ((uint)color.G << 8) | color.R;
 
             using var dwmKey = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\DWM");
@@ -46,7 +44,6 @@ public class SwitchSystemAccentColorAction(ILogger<SwitchSystemAccentColorAction
             explorerKey?.SetValue("StartColorMenu", unchecked((int)dword), RegistryValueKind.DWord);
             explorerKey?.SetValue("AccentPalette", BuildAccentPalette(color.R, color.G, color.B), RegistryValueKind.Binary);
 
-            // 通知 Windows 刷新主题色
             SendMessageTimeout((IntPtr)HWND_BROADCAST, WM_SETTINGCHANGE, (UIntPtr)0, "ImmersiveColorSet", SMTO_ABORTIFHUNG, 5000, out _);
 
             _logger.LogInformation("系统强调色已切换为 {Color}", Settings.ColorHex);

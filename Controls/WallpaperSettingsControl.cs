@@ -53,7 +53,7 @@ public class ChangeWallpaperSettingsControl : ActionSettingsControlBase<ChangeWa
 
         _fitComboBox = new Avalonia.Controls.ComboBox
         {
-            Items = new[] { "平铺", "居中", "拉伸", "填充", "适应", "跨区" },
+            ItemsSource = new[] { "平铺", "居中", "拉伸", "填充", "适应", "跨区" },
             Width = 200
         };
         _fitComboBox.SelectionChanged += (s, e) =>

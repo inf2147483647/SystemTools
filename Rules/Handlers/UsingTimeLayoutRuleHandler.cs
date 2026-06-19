@@ -1,6 +1,7 @@
 using System;
 using ClassIsland.Core;
 using ClassIsland.Core.Abstractions.Services;
+using ClassIsland.Shared;
 using SystemTools.Rules;
 
 namespace SystemTools;

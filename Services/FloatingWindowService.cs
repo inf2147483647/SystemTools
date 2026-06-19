@@ -130,8 +130,43 @@ public class FloatingWindowService
 
     public void RegisterTrigger(FloatingWindowTrigger trigger)
     {
-        _entries[trigger] = new FloatingWindowEntry(
-            trigger.GetButtonId(),
+        _entries[trigger] = CreateEntry(trigger);
+
+        PruneButtonWidthCache();
+        NotifyEntriesChanged();
+    }
+
+    public void EnsureUniqueButtonIds()
+    {
+        var usedButtonIds = new HashSet<string>();
+        var changed = false;
+
+        foreach (var trigger in _entries.Keys.ToList())
+        {
+            var oldButtonId = trigger.GetButtonId();
+            var buttonId = trigger.GetUniqueButtonId(usedButtonIds.Contains);
+            usedButtonIds.Add(buttonId);
+            _entries[trigger] = CreateEntry(trigger);
+
+            if (!string.Equals(oldButtonId, buttonId, StringComparison.Ordinal))
+            {
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            PruneButtonWidthCache();
+        }
+    }
+
+    private FloatingWindowEntry CreateEntry(FloatingWindowTrigger trigger)
+    {
+        var buttonId = trigger.GetUniqueButtonId(id => _entries.Any(x =>
+            !ReferenceEquals(x.Key, trigger) && string.Equals(x.Value.ButtonId, id, StringComparison.Ordinal)));
+
+        return new FloatingWindowEntry(
+            buttonId,
             trigger.GetIcon(),
             trigger.GetButtonName(),
             trigger.ShouldUseRevertStyle(),
@@ -139,9 +174,6 @@ public class FloatingWindowService
             trigger.GetLayoutButtonName(),
             trigger.TriggerFromFloatingWindow,
             trigger.CancelIsOnState);
-
-        PruneButtonWidthCache();
-        NotifyEntriesChanged();
     }
 
     public void UnregisterTrigger(FloatingWindowTrigger trigger)
@@ -506,7 +538,10 @@ public class FloatingWindowService
 
     private List<List<FloatingWindowEntry>> GetOrderedRows()
     {
-        var values = _entries.Values.ToDictionary(x => x.ButtonId, x => x);
+        EnsureUniqueButtonIds();
+        var values = _entries.Values
+            .GroupBy(x => x.ButtonId)
+            .ToDictionary(x => x.Key, x => x.First());
         var order = _configHandler.Data.FloatingWindowButtonOrder ?? [];
 
         var orderedIds = values.Keys
